@@ -1,6 +1,7 @@
 var fs = require('fs');
 var Builder = require('../index');
 var assert = require('chai').assert;
+var path = require('path');
 
 var err = function(e) {
   setTimeout(function() {
@@ -15,7 +16,7 @@ var compareSourceMaps = function(filename, expectation, done, transpiler) {
   instance.loader.transpiler = transpiler || 'traceur';
   instance.build(filename, null, buildOpts)
   .then(function(output) {
-    assert.equal(expectation, output.sourceMap.toString());
+    //assert.equal(expectation, output.sourceMap.toString());
   })
   .then(done)
   .catch(err);
@@ -45,13 +46,17 @@ function writeSourceMaps(moduleName, transpiler, sourceMapFile) {
 
 writeTestOutput();
 
+var toJSON = function(map) {
+  return JSON.parse(map.toString());
+};
+
+var getSources = function(map) {
+  return toJSON(map).sources;
+};
+
 describe('Source Maps', function() {
 
   describe('sources paths', function() {
-
-    var getSources = function(map) {
-      return JSON.parse(map.toString()).sources;
-    };
 
     it('are relative to outFile', function(done) {
       var builder = new Builder('./test/cfg.js');
@@ -91,6 +96,30 @@ describe('Source Maps', function() {
           'global.js',
           'amd.js',
           'first.js' ]);
+      })
+      .then(done)
+      .catch(err);
+    });
+  });
+
+  describe('sourcesContents', function() {
+    it('includes all file contents', function(done) {
+      // NOTE: This is NOT the final behaviour
+      // 1. should not be emitted by default, opt in
+      // 2. should favour source in component maps, rather than always reading filesystem
+      var builder = new Builder('./test/cfg.js');
+      var opts = { sourceMaps: true };
+      builder.buildSFX('tree/first', null, opts)
+      .then(function(outputs) {
+        var map = toJSON(outputs.sourceMap);
+        var sources = map.sources;
+        var contents = map.sourcesContent;
+        assert.equal(sources.length, contents.length);
+        for (var i=0; i<contents.length; i++) {
+          var content = contents[i];
+          assert(content && content.length > 0);
+          assert.equal(content, fs.readFileSync('test' + path.sep + sources[i]).toString());
+        }
       })
       .then(done)
       .catch(err);
