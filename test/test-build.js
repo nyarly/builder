@@ -189,7 +189,8 @@ suite('Bundle Format', function() {
     })
     .then(function() {
       testPhantom('test/test-sfx-amd.html', done);
-    });
+    })
+    .catch(done);
   });
 });
 
